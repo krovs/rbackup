@@ -8,8 +8,6 @@ set -e
 # RSYNC_USER        - SSH user for NAS
 # RSYNC_IP          - NAS IP address
 # RSYNC_PATH        - Destination path on NAS
-# RETENTION_DAYS    - Delete backups older than N days (0 = disabled)
-# RETENTION_COUNT   - Keep only the last N backups per volume (0 = disabled)
 # CRON_SCHEDULE     - Cron expression (e.g. "0 2 * * *")
 # HEADER            - Notification title
 # MESSAGE_OK        - Success message
@@ -71,7 +69,6 @@ perform_backup() {
     if [ $? -eq 0 ]; then
         MESSAGE=$MESSAGE_OK
         echo "[$(date)] Backup successfully transferred to NAS."
-        cleanup_old_backups
     else
         MESSAGE=$MESSAGE_KO
         echo "[$(date)] ERROR: Failed to transfer backup to NAS."
@@ -88,30 +85,6 @@ perform_backup() {
         $NOTIFICATION_URL >/dev/null 2>&1
 
     echo "[$(date)] Notification sent: $MESSAGE"
-}
-
-cleanup_old_backups() {
-    echo "[$(date)] Starting retention cleanup on NAS..."
-
-    # Time-based cleanup
-    if [ "$RETENTION_DAYS" -gt 0 ]; then
-        echo "[$(date)] Removing backups older than $RETENTION_DAYS days..."
-        ssh -i $SSH_KEY -o StrictHostKeyChecking=no $RSYNC_USER@$RSYNC_IP \
-            "find '$RSYNC_PATH' -type f -name '*.tar.gz' -mtime +$RETENTION_DAYS -delete"
-    fi
-
-    # Count-based cleanup
-    if [ -n "$RETENTION_COUNT" ] && [ "$RETENTION_COUNT" -gt 0 ] 2>/dev/null; then
-        echo "[$(date)] Keeping only the latest $RETENTION_COUNT backups per volume..."
-        ssh -i $SSH_KEY -o StrictHostKeyChecking=no $RSYNC_USER@$RSYNC_IP "
-            for vol in \$(ls '$RSYNC_PATH' | sed 's/_.*//g' | sort -u); do
-                ls -1t '$RSYNC_PATH'/\${vol}_*.tar.gz 2>/dev/null | \
-                tail -n +$((RETENTION_COUNT+1)) | xargs -r rm --
-            done
-        "
-    fi
-
-    echo "[$(date)] Retention cleanup completed."
 }
 
 # ==============================
