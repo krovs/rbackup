@@ -101,12 +101,12 @@ cleanup_old_backups() {
     fi
 
     # Count-based cleanup
-    if [ "$RETENTION_COUNT" -gt 0 ]; then
+    if [ -n "$RETENTION_COUNT" ] && [ "$RETENTION_COUNT" -gt 0 ] 2>/dev/null; then
         echo "[$(date)] Keeping only the latest $RETENTION_COUNT backups per volume..."
         ssh -i $SSH_KEY -o StrictHostKeyChecking=no $RSYNC_USER@$RSYNC_IP "
             for vol in \$(ls '$RSYNC_PATH' | sed 's/_.*//g' | sort -u); do
                 ls -1t '$RSYNC_PATH'/\${vol}_*.tar.gz 2>/dev/null | \
-                tail -n +\$((RETENTION_COUNT+1)) | xargs -r rm --
+                tail -n +$((RETENTION_COUNT+1)) | xargs -r rm --
             done
         "
     fi
