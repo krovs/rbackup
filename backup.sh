@@ -12,8 +12,12 @@ set -e
 # HEADER            - Notification title
 # MESSAGE_OK        - Success message
 # MESSAGE_KO        - Failure message
-# NOTIFICATION_URL  - Apprise endpoint
+# NOTIFICATION_URL  - Apprise endpoint or ntfy URL
 # NOTIFICATION_TAGS - Tags for notification
+# NOTIFICATION_TYPE  - Notification methods (comma-separated: "apprise", "ntfy", "telegram")
+# TELEGRAM_CHAT_ID   - Chat ID for Telegram notifications
+# TELEGRAM_API_URL   - Telegram Bot API URL
+# NTFY_TOKEN         - Token for ntfy notifications
 
 # ==============================
 # Internal Paths
@@ -77,14 +81,38 @@ perform_backup() {
     echo "[$(date)] Cleaning up temporary backup directory: $BACKUP_DIR"
     rm -rf $BACKUP_DIR
 
-    echo "[$(date)] Sending notification..."
-    curl -s -X POST \
-        -F "title=$HEADER" \
-        -F "body=$MESSAGE" \
-        -F "tags=$NOTIFICATION_TAGS" \
-        $NOTIFICATION_URL >/dev/null 2>&1
+    echo "[$(date)] Sending notifications..."
+    if echo "$NOTIFICATION_TYPE" | grep -q "apprise"; then
+        curl -s -X POST \
+            -F "title=$HEADER" \
+            -F "body=$MESSAGE" \
+            -F "tags=$NOTIFICATION_TAGS" \
+            "$NOTIFICATION_URL" >/dev/null 2>&1
+        echo "[$(date)] Apprise notification sent."
+    fi
 
-    echo "[$(date)] Notification sent: $MESSAGE"
+    if echo "$NOTIFICATION_TYPE" | grep -q "ntfy"; then
+        curl -s -X POST \
+            -H "Title: $HEADER" \
+            -u ":$NTFY_TOKEN" \
+            -d "$MESSAGE" \
+            "$NOTIFICATION_URL/$NOTIFICATION_TAGS" >/dev/null 2>&1
+        echo "[$(date)] ntfy notification sent."
+    fi
+
+    if echo "$NOTIFICATION_TYPE" | grep -q "telegram"; then
+        curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d "{
+                \"chat_id\": \"${TELEGRAM_CHAT_ID}\",
+                \"parse_mode\": \"Markdown\",
+                \"text\": \"*${HEADER}*\n${MESSAGE}\"
+            }" \
+            "$TELEGRAM_API_URL" >/dev/null 2>&1
+        echo "[$(date)] Telegram notification sent."
+    fi
+
+    echo "[$(date)] Notifications completed."
 }
 
 # ==============================
