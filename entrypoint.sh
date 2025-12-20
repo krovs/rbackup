@@ -1,9 +1,9 @@
 #!/bin/sh
+set -e
 
-# Write the cron job
-echo "[$(date)] Writing cron job: $CRON_SCHEDULE /usr/local/bin/backup.sh"
-echo "$CRON_SCHEDULE /usr/local/bin/backup.sh" > /etc/crontabs/root
+: "${CRON_SCHEDULE:=0 2 * * *}"
 
-# Start cron in the foreground
-echo "[$(date)] Starting cron daemon..."
-crond -f
+echo "$CRON_SCHEDULE /usr/local/bin/backup.sh >> /var/log/backup.log 2>&1" \
+  > /etc/crontabs/root
+
+exec crond -f
