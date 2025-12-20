@@ -19,30 +19,35 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GHCR
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PAT }}
 
-      - name: Build and push image
-        id: build
+      # Build & push :latest
+      - name: Build and push latest image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ghcr.io/krovs/rbackup:latest
-          labels: |
-            org.opencontainers.image.source=https://github.com/krovs/rbackup
-            org.opencontainers.image.revision=${{ github.sha }}
+          tags: ghcr.io/krovs/rbackup:latest
 
-      - name: Bump version and push tag
-        if: success()
+      # Bump version only if build succeeded
+      - name: Bump version and create tag
+        id: tag_version
         uses: mathieudutour/github-tag-action@v6.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           default_bump: patch
+
+      # Build & push versioned tag
+      - name: Build and push versioned image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/krovs/rbackup:${{ steps.tag_version.outputs.new_tag }}
