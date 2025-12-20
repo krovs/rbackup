@@ -6,7 +6,8 @@ RUN apk add --no-cache \
   mysql-client \
   curl \
   bash \
-  tzdata
+  tzdata \
+  cronie
 
 COPY backup.sh /usr/local/bin/backup.sh
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
