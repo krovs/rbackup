@@ -13,7 +13,13 @@ log() {
 }
 
 rclone_base() {
-  echo "--s3-endpoint $ENDPOINT --s3-no-check-bucket --checksum"
+  echo "
+    --s3-provider Other
+    --s3-env-auth
+    --s3-endpoint $ENDPOINT
+    --s3-force-path-style
+    --checksum
+  "
 }
 
 mkdir -p "$TMP_DUMPS"
@@ -82,7 +88,7 @@ EOF
       log "Mirroring volume path $path"
       rclone sync \
         "$path" \
-        "s3:$SERVICE_PREFIX/data" \
+        "s3:$BUCKET/$svc/data" \
         $(rclone_base) || FAILED=1
     done
   fi
@@ -96,9 +102,9 @@ EOF
 
     if pg_dump -h "$PG_HOST" -U "$PG_USER" "$PG_DB" \
       | gzip > "$DUMP"; then
-      rclone copy \
+        rclone copy \
         "$DUMP" \
-        "s3:$SERVICE_PREFIX/dumps" \
+        "s3:$BUCKET/$svc/dumps" \
         $(rclone_base) || FAILED=1
       rm -f "$DUMP"
     else
