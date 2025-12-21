@@ -44,31 +44,33 @@ for svc in $(echo "$SERVICES" | tr "," " "); do
   MYSQL_PASSWORD=""
   MYSQL_DB=""
 
-  echo "$SPEC" | while IFS= read -r line; do
-    [ -z "$line" ] && continue
-    key="${line%%=*}"
-    val="${line#*=}"
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  key="${line%%=*}"
+  val="${line#*=}"
 
-    case "$key" in
-      paths)
-        PATHS="$val"
-        ;;
-      pg)
-        PG_HOST="${val%%:*}"
-        REST="${val#*:}"
-        PG_USER="${REST%%@*}"
-        PG_DB="${REST#*@}"
-        ;;
-      mysql)
-        MYSQL_HOST="${val%%:*}"
-        REST="${val#*:}"
-        MYSQL_USER="${REST%%:*}"
-        MYSQL_PASSWORD="${REST#*:}"
-        MYSQL_DB="${MYSQL_PASSWORD#*@}"
-        MYSQL_PASSWORD="${MYSQL_PASSWORD%@*}"
-        ;;
-    esac
-  done
+  case "$key" in
+    paths)
+      PATHS="$val"
+      ;;
+    pg)
+      PG_HOST="${val%%:*}"
+      REST="${val#*:}"
+      PG_USER="${REST%%@*}"
+      PG_DB="${REST#*@}"
+      ;;
+    mysql)
+      MYSQL_HOST="${val%%:*}"
+      REST="${val#*:}"
+      MYSQL_USER="${REST%%:*}"
+      MYSQL_PASSWORD="${REST#*:}"
+      MYSQL_DB="${MYSQL_PASSWORD#*@}"
+      MYSQL_PASSWORD="${MYSQL_PASSWORD%@*}"
+      ;;
+  esac
+done <<EOF
+$SPEC
+EOF
 
   SERVICE_PREFIX="$BUCKET/$svc"
 
