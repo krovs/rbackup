@@ -1,42 +1,25 @@
-# 🐳 rbackup — VolSync‑like Mirrors for Docker (rclone mode)
+# rbackup
 
-`rbackup` is a Dockerized **data mirror service** inspired by
-**VolSync’s rclone mover**, designed for **Docker Compose / homelabs**.
+Dockerized data mirror service inspired by VolSync's rclone mover, designed for
+Docker Compose and homelabs.
 
-It mirrors explicitly mounted Docker volumes and optional database dumps
-to an **S3‑compatible object store** (Garage, MinIO, AWS S3, etc.)
-**without encryption**, relying on:
+Mirrors explicitly mounted Docker volumes and optional database dumps to an
+S3-compatible object store (Garage, MinIO, AWS S3, etc.) without encryption,
+relying on object versioning and retention policies for safety.
 
-- object versioning (Garage)
-- retention policies (Kopia / backend)
+## Features
 
-for safety and history.
-
-✅ No Docker socket  
-✅ No host volume scanning  
-✅ Human‑readable data in S3  
-✅ Declarative, per‑service configuration  
-
----
-
-## 🚀 Features
-
-- Mirror selected Docker volumes using **rclone**
+- Mirror selected Docker volumes using rclone
 - Optional PostgreSQL and MySQL database dumps
-- Multi‑service support (one prefix per service)
-- Browsable objects in S3 / Garage Web UI
-- Built‑in cron scheduler
-- Notifications:
-  - Apprise
-  - ntfy
-  - Telegram
-- Multi‑arch image (`amd64`, `arm64`)
+- Multi-service support (one prefix per service)
+- Browsable objects in S3/Garage Web UI
+- Built-in cron scheduler
+- Notifications: Apprise, ntfy, Telegram
+- Multi-arch image (`amd64`, `arm64`)
 
----
+## How It Works
 
-## 🧠 How It Works
-
-```terminal
+```text
 02:00
 ├─ For each service
 │   ├─ Mirror volume paths (rclone sync)
@@ -45,22 +28,10 @@ for safety and history.
 └─ Send notification
 ```
 
-### Important
+This is a **mirror**, not a snapshot-based backup. Safety is provided by bucket
+versioning and external retention policies (e.g., Kopia).
 
-This is a **mirror**, not a snapshot‑based backup.
-
-Safety is provided by:
-
-- **Garage bucket versioning**
-- **Kopia retention & offsite replication**
-
-This is **exactly how VolSync’s rclone mover works**.
-
----
-
-## 📦 Usage (Docker Compose)
-
-### ✅ Full example (mirror mode)
+## Usage
 
 ```yaml
 services:
@@ -68,30 +39,25 @@ services:
     container_name: rbackup
     image: ghcr.io/krovs/rbackup:latest
     restart: unless-stopped
-
     environment:
-      DEVICE_NAME: server1
       CRON_SCHEDULE: "0 2 * * *"
 
-      # S3 / Garage
       S3_ENDPOINT: "http://garage:3900"
       S3_BUCKET: "server1-mirror"
+      S3_REGION: "garage"
       AWS_ACCESS_KEY_ID: "GKxxxxxxxx"
       AWS_SECRET_ACCESS_KEY: "xxxxxxxxxxxxxxxx"
-      AWS_DEFAULT_REGION: "garage"
 
-      # Services to mirror
       SERVICES: "forgejo,nextcloud"
 
       SERVICE_forgejo: |
         paths=/data/forgejo
-        pg=forgejo-postgres:postgres@forgejo
+        pg=forgejo-postgres:postgres@forgejo:secret
 
       SERVICE_nextcloud: |
         paths=/data/nextcloud
-        mysql=nextcloud-mysql:root:example@nextcloud
+        mysql=nextcloud-mysql:root:secret@nextcloud
 
-      # Notifications
       HEADER: "📦 Nightly mirror"
       MESSAGE_OK: "✅ Mirror completed"
       MESSAGE_KO: "❌ Mirror failed"
@@ -113,130 +79,95 @@ volumes:
   backup-dumps:
 ```
 
----
+## Resulting S3 Layout
 
-## 🗂 Resulting Layout in S3 / Garage
-
-```bash
+```text
 server1-mirror/
 ├── forgejo/
 │   ├── data/
 │   └── dumps/
 │       └── forgejo-postgres.sql.gz
 └── nextcloud/
-├── data/
-└── dumps/
-└── nextcloud-mysql.sql.gz
+    ├── data/
+    └── dumps/
+        └── nextcloud-mysql.sql.gz
 ```
 
-✅ Fully browsable  
-✅ Downloadable  
-✅ Versioned  
+## Environment Variables
 
----
+### Required
 
-## ⚙️ Service Specification Format
+| Variable              | Description                          |
+| --------------------- | ------------------------------------ |
+| `S3_ENDPOINT`         | S3-compatible endpoint URL           |
+| `S3_BUCKET`           | Target bucket name                   |
+| `S3_REGION`           | S3 region (use `garage` for Garage)  |
+| `AWS_ACCESS_KEY_ID`   | S3 access key                        |
+| `AWS_SECRET_ACCESS_KEY` | S3 secret key                      |
+| `SERVICES`            | Comma-separated list of service names |
 
-Each service is defined with **one environment variable**:
+### Optional
+
+| Variable            | Default         | Description                      |
+| ------------------- | --------------- | -------------------------------- |
+| `CRON_SCHEDULE`     | `0 2 * * *`     | Cron expression for scheduling   |
+| `HEADER`            | `Backup`        | Notification title               |
+| `MESSAGE_OK`        | ✅ Mirror completed | Success message              |
+| `MESSAGE_KO`        | ❌ Mirror failed | Failure message                 |
+| `NOTIFICATION_TYPE` | —               | `apprise`, `ntfy`, `telegram`    |
+
+## Service Specification Format
+
+Each service is defined via `SERVICE_<name>`:
+
+| Key     | Format                         | Description                |
+| ------- | ------------------------------ | -------------------------- |
+| `paths` | `/path/to/volume`              | Volume path(s) to mirror   |
+| `pg`    | `host:user@database:password`  | PostgreSQL connection      |
+| `mysql` | `host:user:password@database`  | MySQL connection           |
+
+Example:
 
 ```text
-SERVICE_<name>
+SERVICE_myapp: |
+  paths=/data/myapp
+  pg=postgres:admin@mydb:secret
 ```
 
-Supported keys
+## Notifications
 
-Key	Description
-paths	Space‑separated volume paths to mirror
-pg	PostgreSQL dump (host:user@database)
-mysql	MySQL dump (host:user:password@database)
-
-Examples
-
-```bash
-	paths=/data/app
-	pg=postgres:postgres@appdb
-	mysql=mysql:root:secret@mydb
-```
-
----
-
-## 🔔 Notifications
-
-Supported backends:
-
-- Apprise
-
-- ntfy
-
-- Telegram
-
-Multiple backends can be enabled at once:
+Enable multiple backends:
 
 ```bash
 NOTIFICATION_TYPE=apprise,ntfy,telegram
 ```
 
-Notifications are best‑effort and never fail the mirror job.
+Notifications are best-effort and never fail the mirror job.
 
----
+## Restore
 
-## 🔄 Restore Workflow
-
-Restore files
-
-- Browse or download directly from Garage Web UI
-
-- Or use rclone:
+### Files
 
 ```bash
-rclone copy s3:server1-mirror/forgejo ./restore
+rclone copy :s3:server1-mirror/forgejo/data ./restore \
+  --s3-endpoint https://s3.example.com \
+  --s3-provider Other \
+  --s3-force-path-style
 ```
 
-Restore database
+### Database
 
 ```bash
-gunzip < forgejo-postgres.sql.gz | psql forgejo
+gunzip < forgejo-postgres.sql.gz | psql -U postgres forgejo
 ```
 
----
+## S3 Path-Style Access
 
-## S3 Access Mode (Important)
+This project uses **path-style S3 access** (`https://s3.example.com/<bucket>`)
+rather than virtual-hosted style (`https://bucket.s3.example.com`).
 
-`rclone` uses **path‑style S3 access** in this project.
+This is required when accessing Garage (or similar) through a reverse proxy, as
+virtual-hosted style causes multipart upload failures with HTTP 308 redirects.
 
-```text
-https://s3.example.com/<bucket>/<path>
-```
-
-### Why
-
-Garage is accessed through a reverse proxy (Caddy / OPNsense).  
-In this setup, **virtual‑hosted S3 (`bucket.s3.example.com`) causes multipart
-upload failures (HTTP 308 redirects) with rclone**.
-
-Path‑style S3:
-
-- works reliably behind proxies
-- avoids redirects
-- is fully supported by Garage
-
-AWS SDK tools may work with bucket domains, but `rclone` does not in this topology.
-
-### Do not change this
-
-Unless Garage is accessed **directly without a proxy**, path‑style S3 is required
-for stable uploads.
-
-### Configuration
-
-```yaml
-S3_ENDPOINT: https://s3.example.com
-S3_BUCKET: apps
-S3_REGION: garage
-```
-
-`rclone` is invoked with:
-
-```text
---s3-force-path-style
-```
+Do not change `--s3-force-path-style` unless accessing Garage directly without a
+proxy.

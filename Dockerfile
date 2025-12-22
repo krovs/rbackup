@@ -4,8 +4,7 @@ RUN apk add --no-cache \
   postgresql-client \
   mysql-client \
   curl \
-  tzdata \
-  cronie
+  tzdata
 
 COPY notify.sh /usr/local/bin/notify.sh
 COPY mirror.sh /usr/local/bin/mirror.sh
