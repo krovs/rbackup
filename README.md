@@ -117,7 +117,7 @@ volumes:
 
 ## 🗂 Resulting Layout in S3 / Garage
 
-```
+```bash
 server1-mirror/
 ├── forgejo/
 │   ├── data/
@@ -200,9 +200,43 @@ gunzip < forgejo-postgres.sql.gz | psql forgejo
 
 ---
 
-## 🔐 Security Model
+## S3 Access Mode (Important)
 
-- ❌ No encryption at mirror level
-- ✅ Object versioning enabled in Garage
-- ✅ Retention & offsite handled by Kopia
-- ✅ Least‑privilege S3 credentials recommended
+`rclone` uses **path‑style S3 access** in this project.
+
+```text
+https://s3.example.com/<bucket>/<path>
+```
+
+### Why
+
+Garage is accessed through a reverse proxy (Caddy / OPNsense).  
+In this setup, **virtual‑hosted S3 (`bucket.s3.example.com`) causes multipart
+upload failures (HTTP 308 redirects) with rclone**.
+
+Path‑style S3:
+
+- works reliably behind proxies
+- avoids redirects
+- is fully supported by Garage
+
+AWS SDK tools may work with bucket domains, but `rclone` does not in this topology.
+
+### Do not change this
+
+Unless Garage is accessed **directly without a proxy**, path‑style S3 is required
+for stable uploads.
+
+### Configuration
+
+```yaml
+S3_ENDPOINT: https://s3.example.com
+S3_BUCKET: apps
+S3_REGION: garage
+```
+
+`rclone` is invoked with:
+
+```text
+--s3-force-path-style
+```

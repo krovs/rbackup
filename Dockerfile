@@ -1,7 +1,6 @@
-FROM alpine:3.23.2
+FROM rclone/rclone:latest
 
 RUN apk add --no-cache \
-  rclone \
   postgresql-client \
   mysql-client \
   curl \
