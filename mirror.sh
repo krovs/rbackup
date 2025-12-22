@@ -24,7 +24,6 @@ rclone_args() {
     --s3-region $S3_REGION
     --s3-force-path-style
     --s3-disable-checksum
-    --s3-upload-cutoff 0
     --s3-no-check-bucket
   "
 }
