@@ -71,7 +71,6 @@ services:
     volumes:
       - forgejo-data:/data/forgejo:ro
       - nextcloud-data:/data/nextcloud:ro
-      - backup-dumps:/dumps
 
 volumes:
   forgejo-data:
