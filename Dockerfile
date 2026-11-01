@@ -1,6 +1,7 @@
-FROM rclone/rclone:latest
+FROM rclone/rclone:1.75.2
 
-RUN apk add --no-cache \
+RUN apk upgrade --no-cache && \
+  apk add --no-cache \
   postgresql-client \
   mysql-client \
   curl \
