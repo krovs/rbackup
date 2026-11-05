@@ -115,6 +115,10 @@ server1-mirror/
 | `MESSAGE_KO`        | ❌ Mirror failed | Failure message                 |
 | `NOTIFICATION_TYPE` | —               | `apprise`, `ntfy`, `telegram`    |
 
+Notification errors are logged separately and do not change the backup result.
+A successful HTTP response means the notification endpoint accepted the request;
+check the destination to confirm delivery.
+
 ## Service Specification Format
 
 Each service is defined via `SERVICE_<name>`:

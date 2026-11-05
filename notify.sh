@@ -11,34 +11,43 @@ notify() {
 
   case "${NOTIFICATION_TYPE:-}" in
     *apprise*)
-      curl -fsS -X POST \
+      if curl -fsS --connect-timeout 10 --max-time 30 -X POST \
         -F "title=$TITLE" \
         -F "body=$MESSAGE" \
         -F "tags=$TAGS,$LEVEL" \
-        "$NOTIFICATION_URL" >/dev/null 2>&1 || true
-      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Apprise notification sent."
+        "$NOTIFICATION_URL" >/dev/null 2>&1; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Apprise accepted the notification."
+      else
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Apprise notification failed." >&2
+      fi
       ;;
   esac
 
   case "${NOTIFICATION_TYPE:-}" in
     *ntfy*)
-      curl -fsS -X POST \
+      if curl -fsS --connect-timeout 10 --max-time 30 -X POST \
         -H "Title: $TITLE" \
         -H "Tags: $LEVEL" \
         -u ":$NTFY_TOKEN" \
         -d "$MESSAGE" \
-        "$NOTIFICATION_URL/$TAGS" >/dev/null 2>&1 || true
-      echo "[$(date '+%Y-%m-%d %H:%M:%S')] ntfy notification sent."
+        "$NOTIFICATION_URL/$TAGS" >/dev/null 2>&1; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] ntfy accepted the notification."
+      else
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: ntfy notification failed." >&2
+      fi
       ;;
   esac
 
   case "${NOTIFICATION_TYPE:-}" in
     *telegram*)
-      curl -fsS -X POST \
+      if curl -fsS --connect-timeout 10 --max-time 30 -X POST \
         -H "Content-Type: application/json" \
         -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"parse_mode\":\"Markdown\",\"text\":\"*${TITLE}*\n_${LEVEL}_\n${MESSAGE}\"}" \
-        "$TELEGRAM_API_URL" >/dev/null 2>&1 || true
-      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Telegram notification sent."
+        "$TELEGRAM_API_URL" >/dev/null 2>&1; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Telegram accepted the notification."
+      else
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Telegram notification failed." >&2
+      fi
       ;;
   esac
 
